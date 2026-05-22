@@ -4,18 +4,22 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const repoRoot = path.resolve(root, '..');
 const signalingRoot = path.join(repoRoot, 'qr-beam-signaling');
-const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+const viteBin = path.join(root, 'node_modules', 'vite', 'bin', 'vite.js');
+const viteMode = process.argv[2] === 'preview' ? 'preview' : 'dev';
+const viteArgs = viteMode === 'preview'
+  ? [viteBin, 'preview', '--host', '0.0.0.0']
+  : [viteBin, '--host', '0.0.0.0'];
 
 const children = [
-  spawn(npmCmd, ['run', 'start'], {
+  spawn(process.execPath, ['server.js'], {
     cwd: signalingRoot,
-    stdio: 'inherit',
-    shell: process.platform === 'win32',
+    stdio: ['ignore', 'inherit', 'inherit'],
+    shell: false,
   }),
-  spawn(npmCmd, ['exec', 'vite', '--', '--host', '0.0.0.0'], {
+  spawn(process.execPath, viteArgs, {
     cwd: root,
-    stdio: 'inherit',
-    shell: process.platform === 'win32',
+    stdio: ['ignore', 'inherit', 'inherit'],
+    shell: false,
   }),
 ];
 
@@ -31,6 +35,11 @@ function shutdown(exitCode = 0) {
 }
 
 for (const child of children) {
+  child.on('error', (err) => {
+    console.error(err);
+    shutdown(1);
+  });
+
   child.on('exit', (code) => {
     if (!shuttingDown && code !== 0) shutdown(code ?? 1);
   });

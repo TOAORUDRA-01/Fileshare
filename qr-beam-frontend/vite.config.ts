@@ -21,4 +21,17 @@ export default defineConfig({
       },
     },
   },
+  preview: {
+    host: true,
+    allowedHosts: true,
+    proxy: {
+      '/signal': {
+        target: 'ws://localhost:8443',
+        ws: true,
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/signal/, ''),
+      },
+    },
+  },
 })
