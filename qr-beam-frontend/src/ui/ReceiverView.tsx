@@ -219,7 +219,7 @@ export function ReceiverView() {
               ['Size', formatBytes(pendingMeta.size)],
               ['Type', pendingMeta.mimeType],
               ['Chunks', `${pendingMeta.totalChunks}`],
-              ['SHA-256', pendingMeta.sha256.substring(0, 16) + '…'],
+              ['Integrity', pendingMeta.sha256 ? pendingMeta.sha256.substring(0, 16) + '...' : 'AES-GCM per chunk'],
             ].map(([label, val]) => (
               <div className="row" key={label}>
                 <span className="label">{label}</span>
@@ -228,7 +228,7 @@ export function ReceiverView() {
             ))}
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 20, lineHeight: 1.6 }}>
-            🔐 This file is encrypted with AES-256-GCM. SHA-256 will be verified after assembly.
+            🔐 This file is encrypted and authenticated with AES-256-GCM per chunk.
           </div>
           <div className="modal-actions">
             <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => handleConsent(true)}>
@@ -264,7 +264,7 @@ export function ReceiverView() {
           </div>
           <div style={{ marginTop: 16, fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
             <div className="dot dot-active" />
-            AES-256-GCM · Buffering to IndexedDB
+            AES-256-GCM - Fast receive buffer
           </div>
         </div>
       )}
@@ -276,7 +276,7 @@ export function ReceiverView() {
           <div className="success-title">File Received!</div>
           <div className="success-sub">{doneFile.name}</div>
           <div className="hash-display" style={{ marginTop: 16 }}>
-            <div className="label">✓ SHA-256 Verified — File integrity confirmed</div>
+            <div className="label">AES-GCM verified - File integrity confirmed</div>
           </div>
           <button className="btn btn-ghost" style={{ marginTop: 24 }} onClick={reset}>Receive Another</button>
         </div>
@@ -295,3 +295,4 @@ export function ReceiverView() {
     </div>
   );
 }
+

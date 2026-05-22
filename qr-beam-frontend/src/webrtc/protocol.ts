@@ -81,5 +81,6 @@ export interface FileMetadata {
   mimeType: string;
   totalChunks: number;
   chunkSize: number;
-  sha256: string;     // hex SHA-256 of plaintext file
+  sha256: string;     // hex SHA-256 of plaintext file, empty when full-file hashing is disabled
+  integrity?: 'aes-gcm-per-chunk';
 }

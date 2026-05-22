@@ -2,13 +2,13 @@
  * File chunker with AES-256-GCM per-chunk encryption and flow control.
  */
 
-import { encryptChunk, sha256File } from '../crypto/aes';
+import { encryptChunk } from '../crypto/aes';
 import { encodeFrame, FrameType } from './protocol';
 import type { FileMetadata } from './protocol';
 
-export const CHUNK_SIZE = 65_536; // 64 KB
-const HIGH_WATERMARK = 16 * 1024 * 1024;
-const LOW_WATERMARK  =  4 * 1024 * 1024;
+export const CHUNK_SIZE = 256 * 1024;
+const HIGH_WATERMARK = 64 * 1024 * 1024;
+const LOW_WATERMARK  = 16 * 1024 * 1024;
 
 export interface ChunkProgress {
   sentChunks: number;
@@ -34,7 +34,6 @@ export async function sendFile(
   const { onProgress, onDone } = callbacks;
 
   const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-  const sha256 = await sha256File(file);
 
   const meta: FileMetadata = {
     filename: file.name,
@@ -42,7 +41,8 @@ export async function sendFile(
     mimeType: file.type || 'application/octet-stream',
     totalChunks,
     chunkSize: CHUNK_SIZE,
-    sha256,
+    sha256: '',
+    integrity: 'aes-gcm-per-chunk',
   };
   const metaJson = new TextEncoder().encode(JSON.stringify(meta));
   const { iv: metaIv, ciphertext: metaCt } = await encryptChunk(key, metaJson);

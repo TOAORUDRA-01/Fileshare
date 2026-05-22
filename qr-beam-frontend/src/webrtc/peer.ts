@@ -138,7 +138,7 @@ export class QRBeamPeer {
       this.aesKey = await deriveSharedAESKey(myPrivateKey, receiverPubKey, sidBytes);
 
       // Create DataChannel and initiate offer
-      this.channel = this.pc.createDataChannel('qrbeam', { ordered: true });
+      this.channel = this.pc.createDataChannel('qrbeam', { ordered: false });
       this.setupChannel(this.channel);
 
       const offer = await this.pc.createOffer();
