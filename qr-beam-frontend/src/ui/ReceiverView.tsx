@@ -5,6 +5,7 @@ import type { ParsedQRPayload } from '../qr/decode';
 import { QRBeamPeer } from '../webrtc/peer';
 import { startReassembler } from '../webrtc/reassembler';
 import type { FileMetadata } from '../webrtc/protocol';
+import { getSignalingUrl } from '../config/signaling';
 
 type Phase = 'idle' | 'scanning' | 'verifying' | 'connecting' | 'consent' | 'receiving' | 'done' | 'error';
 
@@ -15,7 +16,7 @@ function formatBytes(b: number): string {
   return `${(b / Math.pow(1024, i)).toFixed(1)} ${u[i]}`;
 }
 
-const SIGNALING_URL = import.meta.env.VITE_SIGNALING_URL || 'ws://localhost:8443';
+const SIGNALING_URL = getSignalingUrl();
 
 export function ReceiverView() {
   const [phase, setPhase] = useState<Phase>('idle');

@@ -4,6 +4,7 @@ import { buildQRPayload, generateQRDataURL, generateSessionId, QR_ROTATE_MS } fr
 import { QRBeamPeer } from '../webrtc/peer';
 import { sendFile } from '../webrtc/chunker';
 import type { ChunkProgress } from '../webrtc/chunker';
+import { getSignalingUrl } from '../config/signaling';
 
 type Phase = 'idle' | 'generating' | 'showing_qr' | 'waiting_receiver' | 'connected' | 'transferring' | 'done' | 'error';
 
@@ -22,7 +23,7 @@ function formatEta(s: number): string {
   return `${Math.round(s / 60)}m ${Math.round(s % 60)}s`;
 }
 
-const SIGNALING_URL = import.meta.env.VITE_SIGNALING_URL || `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/signal`;
+const SIGNALING_URL = getSignalingUrl();
 
 export function SenderView() {
   const [phase, setPhase] = useState<Phase>('idle');
