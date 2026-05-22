@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QR-Beam — Secure Air-Gapped File Transfer</title>
+    <meta name="description" content="Transfer any file between devices using QR codes for cryptographic key exchange and WebRTC for encrypted P2P transfer. Zero server involvement. ECDH + AES-256-GCM." />
+    <meta name="theme-color" content="#070B14" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- PWA meta -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="QR-Beam" />
+    <!-- Security headers hint (actual headers set by nginx) -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

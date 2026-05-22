@@ -1,0 +1,255 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+.wrap { padding: 1rem 0 1.5rem; }
+.section { margin-bottom: 1.75rem; }
+.stitle { font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-text-tertiary); margin-bottom: 0.75rem; padding-bottom: 0.5rem; border-bottom: 0.5px solid var(--color-border-tertiary); }
+.card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; margin-bottom: 0.75rem; }
+.ctitle { font-size: 14px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 0.5rem; display:flex; align-items:center; gap:8px; }
+.cbody { font-size: 13px; color: var(--color-text-secondary); line-height: 1.65; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.75rem; }
+.badge { display:inline-block; font-size:11px; font-weight:500; padding:2px 8px; border-radius:4px; margin-left:4px; }
+.bb { background:var(--color-background-info); color:var(--color-text-info); }
+.bg { background:var(--color-background-success); color:var(--color-text-success); }
+.bw { background:var(--color-background-warning); color:var(--color-text-warning); }
+.bp { background:var(--color-background-secondary); color:var(--color-text-secondary); border:0.5px solid var(--color-border-secondary); }
+.tag { display:inline-block; font-size:11px; padding:2px 8px; border-radius:4px; border:0.5px solid var(--color-border-secondary); color:var(--color-text-secondary); background:var(--color-background-secondary); margin:2px 2px 0 0; }
+.phase { display:flex; gap:12px; align-items:flex-start; padding:10px 0; border-bottom:0.5px solid var(--color-border-tertiary); }
+.phase:last-child { border-bottom:none; }
+.pnum { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:500; flex-shrink:0; }
+.pnum-qr { background:var(--color-background-warning); color:var(--color-text-warning); }
+.pnum-rtc { background:var(--color-background-info); color:var(--color-text-info); }
+.pnum-done { background:var(--color-background-success); color:var(--color-text-success); }
+.pl { font-size:13px; font-weight:500; color:var(--color-text-primary); }
+.pd { font-size:12px; color:var(--color-text-secondary); margin-top:3px; line-height:1.55; }
+.frame { font-family: var(--font-mono); font-size: 11px; background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 10px 14px; color: var(--color-text-primary); line-height: 1.75; margin-top: 0.5rem; }
+.divider { display:flex; align-items:center; gap:10px; margin: 0.5rem 0; }
+.divider-line { flex:1; height:0.5px; background:var(--color-border-tertiary); }
+.divider-label { font-size:11px; color:var(--color-text-tertiary); white-space:nowrap; }
+.highlight { border: 2px solid var(--color-border-success); }
+</style>
+<div class="wrap">
+
+<div class="section">
+  <div class="stitle">Design principle</div>
+  <div class="card highlight">
+    <div class="ctitle"><i class="ti ti-bulb" aria-hidden="true" style="font-size:16px;color:var(--color-text-success)"></i> Two channels, two jobs — never crossed</div>
+    <div class="cbody">
+      The QR code is an <strong style="font-weight:500">optical air-gap channel</strong> — physically secure by nature, slow by nature. It carries only the tiny key material needed to establish trust.<br><br>
+      WebRTC DataChannel is a <strong style="font-weight:500">high-speed data channel</strong> — fast enough for large files, but needs a secure way to bootstrap. It carries only the encrypted file, never any keys.<br><br>
+      The two never overlap. By the time file bytes flow, the QR is done and can be dismissed.
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="stitle">Complete session flow — step by step</div>
+  <div class="card">
+
+    <div class="divider"><div class="divider-line"></div><div class="divider-label">Phase 1 — QR key exchange (optical, air-gapped)</div><div class="divider-line"></div></div>
+
+    <div class="phase">
+      <div class="pnum pnum-qr">1</div>
+      <div>
+        <div class="pl">Sender generates ephemeral ECDH key pair</div>
+        <div class="pd">Web Crypto API: <code style="font-family:var(--font-mono);font-size:11px">generateKey({name:"ECDH", namedCurve:"P-256"})</code>. Private key never leaves the browser tab. Public key is 65 bytes uncompressed.</div>
+      </div>
+    </div>
+    <div class="phase">
+      <div class="pnum pnum-qr">2</div>
+      <div>
+        <div class="pl">Sender encodes bootstrap payload into QR</div>
+        <div class="pd">Payload is ~180 bytes — fits comfortably in QR v12. Rotates every 8 seconds with a fresh HMAC-SHA256 timestamp to prevent replay. Displayed full-screen.</div>
+      </div>
+    </div>
+    <div class="phase">
+      <div class="pnum pnum-qr">3</div>
+      <div>
+        <div class="pl">Receiver scans QR with camera</div>
+        <div class="pd">Parses payload, validates HMAC + timestamp (rejects if >15s old). Extracts sender's public key and session ID. Generates its own ECDH key pair immediately.</div>
+      </div>
+    </div>
+    <div class="phase">
+      <div class="pnum pnum-qr">4</div>
+      <div>
+        <div class="pl">Both sides derive the shared secret independently</div>
+        <div class="pd">ECDH: sender's private key × receiver's public key = receiver's private key × sender's public key. Shared secret hashed through HKDF-SHA256 → 256-bit AES-GCM key. Neither side ever transmits the key — it's derived from math.</div>
+      </div>
+    </div>
+
+    <div class="divider"><div class="divider-line"></div><div class="divider-label">Phase 2 — WebRTC signaling (server-blind)</div><div class="divider-line"></div></div>
+
+    <div class="phase">
+      <div class="pnum pnum-rtc">5</div>
+      <div>
+        <div class="pl">Receiver connects to signaling server via WSS</div>
+        <div class="pd">Sends: <code style="font-family:var(--font-mono);font-size:11px">{sessionID, receiverPubKey}</code> — the receiver's public key rides here so the sender can complete ECDH. Signaling server sees only the session ID and opaque blobs.</div>
+      </div>
+    </div>
+    <div class="phase">
+      <div class="pnum pnum-rtc">6</div>
+      <div>
+        <div class="pl">Sender gets notified, completes ECDH</div>
+        <div class="pd">Sender was polling signaling by sessionID. Gets receiver's pubKey, derives the same AES-GCM key locally. Both sides now share the key without ever transmitting it.</div>
+      </div>
+    </div>
+    <div class="phase">
+      <div class="pnum pnum-rtc">7</div>
+      <div>
+        <div class="pl">SDP offer / answer exchange via signaling</div>
+        <div class="pd">Standard WebRTC negotiation. SDP blobs are encrypted with the shared AES-GCM key before being sent through the signaling server — so even the SDP is opaque to the server.</div>
+      </div>
+    </div>
+    <div class="phase">
+      <div class="pnum pnum-rtc">8</div>
+      <div>
+        <div class="pl">ICE candidates exchanged, DTLS handshake completes</div>
+        <div class="pd">Direct P2P path found via STUN. DTLS-SRTP negotiated automatically by the browser. DataChannel opens. Signaling server is now idle — session purged.</div>
+      </div>
+    </div>
+
+    <div class="divider"><div class="divider-line"></div><div class="divider-label">Phase 3 — encrypted file transfer (pure P2P)</div><div class="divider-line"></div></div>
+
+    <div class="phase">
+      <div class="pnum pnum-done">9</div>
+      <div>
+        <div class="pl">Sender sends metadata frame first</div>
+        <div class="pd">Encrypted with AES-256-GCM: <code style="font-family:var(--font-mono);font-size:11px">{filename, size, type, totalChunks, sha256}</code>. Receiver shows "Accept transfer?" dialog before any file data arrives.</div>
+      </div>
+    </div>
+    <div class="phase">
+      <div class="pnum pnum-done">10</div>
+      <div>
+        <div class="pl">Chunked file transfer over DataChannel</div>
+        <div class="pd">64 KB chunks, each encrypted independently with AES-256-GCM + unique 96-bit IV. Sender watches <code style="font-family:var(--font-mono);font-size:11px">bufferedAmount</code> for flow control. Receiver buffers to IndexedDB.</div>
+      </div>
+    </div>
+    <div class="phase">
+      <div class="pnum pnum-done">11</div>
+      <div>
+        <div class="pl">SHA-256 integrity check + download</div>
+        <div class="pd">Receiver hashes reassembled plaintext. Must match sender's hash from step 9. On match → download triggered. On mismatch → alert user, discard, request resend.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="stitle">QR payload — exact binary layout</div>
+  <div class="card">
+    <div class="cbody" style="margin-bottom:6px">Total: ~178 bytes. Fits in QR version 12, binary mode, ECC level M. Scans reliably at 20–30 cm on any modern phone.</div>
+    <div class="frame">
+[2]   magic:       0x51 0x52  ("QR")<br>
+[1]   version:     0x01<br>
+[16]  session_id:  CSPRNG 128-bit random<br>
+[65]  sender_pub:  ECDH P-256 public key (uncompressed)<br>
+[8]   timestamp:   Unix ms (uint64, big-endian)<br>
+[4]   ttl:         15000 (15 seconds, uint32)<br>
+[50]  sig_server:  WSS signaling server URL (ASCII, null-padded)<br>
+[32]  hmac:        HMAC-SHA256(all above fields, session_secret)
+    </div>
+    <div class="cbody" style="margin-top:8px">The <code style="font-family:var(--font-mono);font-size:11px">session_secret</code> used for HMAC is derived from the ECDH private key + timestamp — so only the true sender can produce a valid HMAC. Receiver verifies before proceeding.</div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="stitle">Encryption layers — what's protected where</div>
+  <div class="card">
+    <div class="grid2">
+      <div>
+        <div style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:8px">QR channel</div>
+        <div class="phase" style="padding:6px 0">
+          <div><div class="pl" style="font-size:12px">Physical air-gap</div><div class="pd">Only the person holding the camera can read it. No network exposure.</div></div>
+        </div>
+        <div class="phase" style="padding:6px 0">
+          <div><div class="pl" style="font-size:12px">HMAC-SHA256 signature</div><div class="pd">Proves QR was generated by the true sender. Timestamp prevents replay.</div></div>
+        </div>
+        <div class="phase" style="padding:6px 0">
+          <div><div class="pl" style="font-size:12px">5s visual rotation</div><div class="pd">Shoulder-surf / screenshot window is tiny.</div></div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:8px">WebRTC channel</div>
+        <div class="phase" style="padding:6px 0">
+          <div><div class="pl" style="font-size:12px">TLS 1.3 on WSS</div><div class="pd">Signaling transport is encrypted. Server sees only session ID + opaque blobs.</div></div>
+        </div>
+        <div class="phase" style="padding:6px 0">
+          <div><div class="pl" style="font-size:12px">DTLS-SRTP on DataChannel</div><div class="pd">Browser-enforced. Mandatory in all WebRTC implementations.</div></div>
+        </div>
+        <div class="phase" style="padding:6px 0">
+          <div><div class="pl" style="font-size:12px">AES-256-GCM app layer</div><div class="pd">File data encrypted before entering WebRTC. Server + TURN relay see only ciphertext even if P2P fails.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="stitle">Why the key never travels over the network</div>
+  <div class="card">
+    <div class="cbody">
+      The ECDH exchange works because both sides compute the <em>same</em> secret from <em>different</em> inputs:<br><br>
+      <div class="frame">
+Sender computes:   sharedSecret = ECDH(senderPrivKey,   receiverPubKey)<br>
+Receiver computes: sharedSecret = ECDH(receiverPrivKey, senderPubKey)<br>
+<br>
+Mathematics guarantees: both results are identical.<br>
+<br>
+AES key = HKDF-SHA256(sharedSecret, salt=sessionID, info="qrbeam-v1")
+      </div>
+      <div style="margin-top:8px">The sender's public key travels via QR (air-gapped). The receiver's public key travels via WSS (encrypted). The <em>private keys never leave their respective devices</em>. The shared secret is never transmitted. The signaling server is mathematically blind to the encryption key.</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="stitle">Signaling server — minimal surface area</div>
+  <div class="card">
+    <div class="cbody" style="margin-bottom:10px">The signaling server does exactly three things and nothing else:</div>
+    <div class="phase">
+      <div class="pnum pnum-rtc" style="font-size:11px">A</div>
+      <div><div class="pl">Route join / notify by sessionID</div><div class="pd">When receiver connects with sessionID, server pings the waiting sender. Passes receiver's pubKey blob opaquely.</div></div>
+    </div>
+    <div class="phase">
+      <div class="pnum pnum-rtc" style="font-size:11px">B</div>
+      <div><div class="pl">Relay encrypted SDP + ICE candidates</div><div class="pd">Passes opaque blobs both ways. Cannot decrypt them (AES-GCM encrypted by app layer). No logging.</div></div>
+    </div>
+    <div class="phase">
+      <div class="pnum pnum-rtc" style="font-size:11px">C</div>
+      <div><div class="pl">Self-destruct session after 60s or on DataChannel open</div><div class="pd">No persistence. In-memory only. Rate-limited: max 10 sessions per IP per minute.</div></div>
+    </div>
+    <div style="margin-top:12px">
+      <div class="tag">Node.js + ws</div>
+      <div class="tag">or Go + gorilla/websocket</div>
+      <div class="tag">~150 lines of code</div>
+      <div class="tag">no database</div>
+      <div class="tag">no file touches it</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="stitle">Tech stack</div>
+  <div class="card">
+    <div class="grid2">
+      <div>
+        <div style="font-size:12px;font-weight:500;margin-bottom:8px;color:var(--color-text-primary)">Frontend (PWA)</div>
+        <div class="tag">React 18 + Vite</div><div class="tag">TypeScript</div>
+        <div class="tag">Web Crypto API</div><div class="tag">WebRTC native</div>
+        <div class="tag">qrcode npm</div><div class="tag">BarcodeDetector API</div>
+        <div class="tag">zxing-js fallback</div><div class="tag">idb-keyval</div>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:500;margin-bottom:8px;color:var(--color-text-primary)">Infrastructure</div>
+        <div class="tag">Node.js signaling (WSS)</div>
+        <div class="tag">Nginx + TLS 1.3</div>
+        <div class="tag">Let's Encrypt</div>
+        <div class="tag">coturn (STUN/TURN)</div>
+        <div class="tag">Docker</div>
+        <div class="tag">HSTS preload</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
