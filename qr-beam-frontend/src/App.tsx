@@ -2,11 +2,13 @@ import { useState } from 'react';
 import './index.css';
 import { SenderView } from './ui/SenderView';
 import { ReceiverView } from './ui/ReceiverView';
+import { useAuth } from './auth/useAuth';
 
 type Mode = 'send' | 'receive';
 
 export default function App() {
   const [mode, setMode] = useState<Mode>(() => window.location.hash.startsWith('#r=') ? 'receive' : 'send');
+  const { user, signOut } = useAuth();
 
   return (
     <>
@@ -23,7 +25,35 @@ export default function App() {
               <div className="logo-sub">Air-gapped secure transfer</div>
             </div>
           </div>
-          <div className="security-badge">E2E Encrypted</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div className="security-badge">E2E Encrypted</div>
+            {user && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <img
+                  src={user.picture}
+                  alt={user.name}
+                  title={user.email}
+                  style={{ width: 30, height: 30, borderRadius: '50%', border: '2px solid var(--border)' }}
+                />
+                <button
+                  onClick={signOut}
+                  title="Sign out"
+                  style={{
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 8,
+                    color: 'var(--text-muted)',
+                    fontSize: 11,
+                    padding: '4px 10px',
+                    cursor: 'pointer',
+                    fontFamily: 'var(--font-sans)',
+                  }}
+                >
+                  Sign out
+                </button>
+              </div>
+            )}
+          </div>
         </header>
 
         {/* Mode selector */}

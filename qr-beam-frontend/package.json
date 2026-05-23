@@ -12,6 +12,7 @@
     "preview:frontend": "vite preview"
   },
   "dependencies": {
+    "@react-oauth/google": "^0.13.5",
     "@zxing/browser": "^0.2.0",
     "idb-keyval": "^6.2.4",
     "qrcode": "^1.5.4",
