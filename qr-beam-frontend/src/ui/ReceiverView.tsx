@@ -32,7 +32,10 @@ export function ReceiverView() {
 
   const cleanup = useCallback(() => {
     stopScannerRef.current?.();
+    stopScannerRef.current = null;
     peerRef.current?.close();
+    peerRef.current = null;
+    consentResolveRef.current = null;
   }, []);
 
   const handleScanResult = useCallback(async (payload: ParsedQRPayload) => {
@@ -136,7 +139,15 @@ export function ReceiverView() {
 
   const handleConsent = useCallback((accept: boolean) => {
     consentResolveRef.current?.(accept);
-    if (!accept) { setPhase('idle'); setPendingMeta(null); }
+    consentResolveRef.current = null;
+    if (accept) {
+      // Immediately show 'receiving' UI — don't wait for first chunk
+      // to arrive before leaving the consent screen.
+      setPhase('receiving');
+    } else {
+      setPhase('idle');
+      setPendingMeta(null);
+    }
   }, []);
 
   const reset = useCallback(() => {

@@ -105,6 +105,8 @@ export function SenderView() {
             onProgress: setProgress,
             onDone: () => setPhase('done'),
             onError: (err) => { setError(err.message); setPhase('error'); },
+          }, {
+            maxMessageSize: peer.getMaxMessageSize(),
           });
         },
         onConnectionStateChange: (state) => {

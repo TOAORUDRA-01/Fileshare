@@ -6,11 +6,29 @@
 import { deriveSharedAESKey, importPeerPublicKey } from '../crypto/ecdh';
 import { encryptChunk, decryptChunk } from '../crypto/aes';
 
-export const ICE_SERVERS = [
+const BASE_ICE_SERVERS: RTCIceServer[] = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
   // TURN server (optional — configured at runtime via environment)
 ];
+
+function buildIceServers(): RTCIceServer[] {
+  const servers = [...BASE_ICE_SERVERS];
+  const turnUrl = import.meta.env.VITE_TURN_URL as string | undefined;
+  const turnUsername = import.meta.env.VITE_TURN_USERNAME as string | undefined;
+  const turnCredential = import.meta.env.VITE_TURN_CREDENTIAL as string | undefined;
+
+  if (turnUrl) {
+    const turnServer: RTCIceServer = { urls: turnUrl };
+    if (turnUsername && turnCredential) {
+      turnServer.username = turnUsername;
+      turnServer.credential = turnCredential;
+    }
+    servers.push(turnServer);
+  }
+
+  return servers;
+}
 
 export type PeerRole = 'sender' | 'receiver';
 
@@ -46,7 +64,7 @@ export class QRBeamPeer {
     this.callbacks = callbacks;
 
     this.pc = new RTCPeerConnection({
-      iceServers: ICE_SERVERS,
+      iceServers: buildIceServers(),
       // Enforce DTLS
       iceTransportPolicy: 'all',
     });
@@ -199,6 +217,7 @@ export class QRBeamPeer {
 
   getAESKey(): CryptoKey | null { return this.aesKey; }
   getChannel(): RTCDataChannel | null { return this.channel; }
+  getMaxMessageSize(): number | null { return this.pc.sctp?.maxMessageSize ?? null; }
 
   private wsSend(data: object): void {
     this.ws?.send(JSON.stringify(data));

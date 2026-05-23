@@ -3,10 +3,12 @@
  */
 
 import { encryptChunk } from '../crypto/aes';
-import { encodeFrame, FrameType } from './protocol';
+import { encodeFrame, FrameType, FRAME_HEADER_SIZE } from './protocol';
 import type { FileMetadata } from './protocol';
 
 export const CHUNK_SIZE = 256 * 1024;
+const AES_GCM_TAG_BYTES = 16;
+const MIN_CHUNK_SIZE = 16 * 1024;
 const HIGH_WATERMARK = 64 * 1024 * 1024;
 const LOW_WATERMARK  = 16 * 1024 * 1024;
 
@@ -25,30 +27,52 @@ export interface ChunkerCallbacks {
   onError?: (err: Error) => void;
 }
 
+export interface ChunkerOptions {
+  maxMessageSize?: number | null;
+}
+
+function resolveChunkSize(maxMessageSize?: number | null): number {
+  if (!maxMessageSize || !Number.isFinite(maxMessageSize) || maxMessageSize <= 0) {
+    return CHUNK_SIZE;
+  }
+
+  const maxPayload = maxMessageSize - FRAME_HEADER_SIZE - AES_GCM_TAG_BYTES;
+  if (maxPayload < MIN_CHUNK_SIZE) return MIN_CHUNK_SIZE;
+  return Math.min(CHUNK_SIZE, maxPayload);
+}
+
 export async function sendFile(
   file: File,
   key: CryptoKey,
   channel: RTCDataChannel,
-  callbacks: ChunkerCallbacks = {}
+  callbacks: ChunkerCallbacks = {},
+  options: ChunkerOptions = {}
 ): Promise<void> {
   const { onProgress, onDone } = callbacks;
+  const chunkSize = resolveChunkSize(options.maxMessageSize);
 
-  const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+  const totalChunks = Math.ceil(file.size / chunkSize);
 
   const meta: FileMetadata = {
     filename: file.name,
     size: file.size,
     mimeType: file.type || 'application/octet-stream',
     totalChunks,
-    chunkSize: CHUNK_SIZE,
+    chunkSize,
     sha256: '',
     integrity: 'aes-gcm-per-chunk',
   };
+
+  // CRITICAL: Register the accept listener BEFORE sending METADATA.
+  // On fast local networks (second+ transfers), the receiver can send
+  // ACCEPT back before our listener is attached — causing a permanent hang.
+  const acceptPromise = waitForAccept(channel);
+
   const metaJson = new TextEncoder().encode(JSON.stringify(meta));
   const { iv: metaIv, ciphertext: metaCt } = await encryptChunk(key, metaJson);
   channel.send(encodeFrame(FrameType.METADATA, 0, metaIv, metaCt));
 
-  await waitForAccept(channel);
+  await acceptPromise;
 
   let offset = 0;
   let chunkIndex = 0;
@@ -69,7 +93,7 @@ export async function sendFile(
       });
     }
 
-    const end = Math.min(offset + CHUNK_SIZE, file.size);
+    const end = Math.min(offset + chunkSize, file.size);
     const slice = await file.slice(offset, end).arrayBuffer();
     const plaintext = new Uint8Array(slice);
 
@@ -79,7 +103,7 @@ export async function sendFile(
 
     channel.send(encodeFrame(FrameType.CHUNK, chunkIndex, iv, ciphertext));
 
-    offset += CHUNK_SIZE;
+    offset += chunkSize;
     chunkIndex++;
 
     if (onProgress) {
@@ -105,21 +129,27 @@ export async function sendFile(
 
 function waitForAccept(channel: RTCDataChannel): Promise<void> {
   return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error('Receiver did not respond to transfer request')), 30_000);
+    const timeout = setTimeout(
+      () => reject(new Error('Receiver did not respond to transfer request')),
+      30_000
+    );
 
     const handler = (event: MessageEvent) => {
       if (!(event.data instanceof ArrayBuffer)) return;
-      const view = new DataView(event.data);
+      // Read the raw frame type byte (first byte of the binary frame)
+      const view = new DataView(event.data as ArrayBuffer);
+      if (view.byteLength < 1) return;
       const type = view.getUint8(0);
-      if (type === 0x06) {
+      if (type === 0x06 /* ACCEPT */) {
         clearTimeout(timeout);
         channel.removeEventListener('message', handler);
         resolve();
-      } else if (type === 0x07) {
+      } else if (type === 0x07 /* REJECT */) {
         clearTimeout(timeout);
         channel.removeEventListener('message', handler);
         reject(new Error('Receiver declined the file transfer'));
       }
+      // Ignore any other frame types (shouldn't occur before accept, but be safe)
     };
     channel.addEventListener('message', handler);
   });
